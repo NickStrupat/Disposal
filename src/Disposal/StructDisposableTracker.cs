@@ -1,22 +1,15 @@
-﻿using System;
+using System;
 
 namespace Disposal {
-	public struct DisposableTracker<T> where T : class, IDisposable {
+	public struct StructDisposableTracker<T> where T : struct, IDisposable {
 		private Int32 useCount;
 
-		public void Dispose(T disposable) {
-			if (disposable == null)
-				throw new ArgumentNullException(nameof(disposable));
+		public void Dispose(ref T disposable) {
 			if (Helpers.IsDisposed(ref useCount))
 				return;
-			DisposalInternals.ClassDisposerCache<T>.Dispose(disposable);
+			DisposalInternals.StructDisposerCache<T>.Dispose(ref disposable);
 		}
 
-		public void Finalize(T disposable) {
-			Dispose(disposable);
-			GC.SuppressFinalize(disposable);
-		}
-		
 		public TResult WrapWithIsDisposedCheck<TResult>(Func<TResult> body) {
 			if (body == null)
 				throw new ArgumentNullException(nameof(body));

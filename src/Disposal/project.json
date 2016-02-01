@@ -1,11 +1,12 @@
 ﻿{
 	"version": "1.0.0-*",
-	"description": "Disposal Class Library",
-	"authors": [ "nick.strupat" ],
-	"tags": [ "" ],
-	"projectUrl": "",
-	"licenseUrl": "",
-	
+	"title": "Disposal",
+	"description": "A utility class which makes correctly implementing IDisposable simpler than ever",
+	"authors": [ "Nick Strupat" ],
+	"tags": [ "disposable", "dispose", "idisposable" ],
+	"projectUrl": "https://github.com/NickStrupat/Disposal",
+	"licenseUrl": "https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE",
+
 	"frameworks": {
 		"net451": {
 			"compilationOptions": { "define": [ "DYNAMIC_ASSEMBLY_SAVEABLE" ] }
@@ -19,7 +20,7 @@
 				"System.Runtime": "4.0.21-beta-23516",
 				"System.Threading": "4.0.11-beta-23516",
 				"System.Reflection.Emit": "4.0.1-beta-23516",
-				"System.Reflection.Emit.Lightweight": "4.0.1-beta-23516",
+				"System.Reflection.Emit.Lightweight": "4.0.1-beta-23516"
 			}
 		}
 	}
