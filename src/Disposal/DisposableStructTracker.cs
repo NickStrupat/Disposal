@@ -1,7 +1,7 @@
 using System;
 
 namespace Disposal {
-	public struct StructDisposableTracker<T> where T : struct, IDisposable {
+	public struct DisposableStructTracker<T> where T : struct, IDisposable {
 		private Int32 useCount;
 
 		public void Dispose(ref T disposable) {

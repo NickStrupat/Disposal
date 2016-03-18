@@ -5,6 +5,19 @@
 	"tags": [ "" ],
 	"projectUrl": "https://github.com/NickStrupat/Disposal",
 	"licenseUrl": "https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE",
+	"configurations": {
+		"Debug": {
+			"compilationOptions": {
+				"define": [ "DEBUG", "TRACE" ]
+			}
+		},
+		"Release": {
+			"compilationOptions": {
+				"define": [ "RELEASE", "TRACE" ],
+				"optimize": true
+			}
+		}
+	},
 	"frameworks": {
 		"dnx451": {
 			"dependencies": {
