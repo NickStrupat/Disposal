@@ -91,8 +91,13 @@ namespace Disposal {
 			foreach (var disposable in disposables) {
 				ilGenerator.Emit(OpCodes.Ldarg_0);
 				ilGenerator.Emit(OpCodes.Ldflda, disposable);
-				if (disposable.FieldType.GetTypeInfo().IsValueType)
-					ilGenerator.Emit(OpCodes.Call, disposable.FieldType.GetMethod(nameof(IDisposable.Dispose)));
+				if (disposable.FieldType.GetTypeInfo().IsValueType) {
+					var disposeMethod = disposable.FieldType.GetMethod(nameof(IDisposable.Dispose));
+					var explicitInterfaceDisposeMethod = disposable.FieldType.GetMethod(DisposeMethodInfo.DeclaringType.FullName + "." + DisposeMethodInfo.Name, BindingFlags.Instance | BindingFlags.NonPublic);
+					// Exlicit implementation of IDisposable.Dispose method in a struct requires boxing when called from C#,
+					// but we can invoke it directly since it exists as a private method of the type
+					ilGenerator.Emit(OpCodes.Call, disposeMethod ?? explicitInterfaceDisposeMethod);
+				}
 				else {
 					ilGenerator.Emit(OpCodes.Ldnull);
 					ilGenerator.Emit(OpCodes.Call, InterlockedExchangeMethodInfo.MakeGenericMethod(disposable.FieldType));
