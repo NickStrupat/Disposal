@@ -7,26 +7,25 @@ namespace Disposal {
 		public void Dispose(T disposable) {
 			if (disposable == null)
 				throw new ArgumentNullException(nameof(disposable));
-			if (Helpers.IsDisposed(ref useCount))
-				return;
-			DisposalInternals.ClassDisposerCache<T>.Dispose(disposable);
-		}
-
-		public void Finalize(T disposable) {
-			Dispose(disposable);
-			GC.SuppressFinalize(disposable);
+			if (Helpers.MarkDisposed(ref useCount)) {
+				DisposalInternals.ClassDisposerCache<T>.Dispose(disposable);
+				GC.SuppressFinalize(disposable);
+			}
 		}
 		
-		public TResult WrapWithIsDisposedCheck<TResult>(Func<TResult> body) {
+		public TResult Guard<TResult>(Func<TResult> body) {
 			if (body == null)
 				throw new ArgumentNullException(nameof(body));
-			return Helpers.WrapWithDisposalCheck(ref useCount, body);
+			return Helpers.DisposalGuard(ref useCount, body);
 		}
 
-		public void WrapWithIsDisposedCheck(Action body) {
+		public void Guard(Action body) {
 			if (body == null)
 				throw new ArgumentNullException(nameof(body));
-			Helpers.WrapWithDisposalCheck(ref useCount, body);
+			Helpers.DisposalGuard(ref useCount, body);
 		}
+
+		public void EnterGuard() => Helpers.Enter(ref useCount);
+		public void ExitGuard() => Helpers.Exit(ref useCount);
 	}
 }

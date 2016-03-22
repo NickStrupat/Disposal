@@ -7,28 +7,27 @@ namespace Disposal {
 		private const Int32 Disposable = 0;
 
 		public static void Enter(ref Int32 useCount) {
-			if (Interlocked.Increment(ref useCount) > 0)
-				return;
-			Interlocked.Decrement(ref useCount);
-			throw new ObjectDisposedException(null);
+			if (Interlocked.Increment(ref useCount) <= 0)
+				throw new ObjectDisposedException(null);
 		}
 
 		public static void Exit(ref Int32 useCount) {
 			Interlocked.Decrement(ref useCount);
 		}
 
-		public static Boolean IsDisposed(ref Int32 useCount) {
+		public static Boolean MarkDisposed(ref Int32 useCount) {
+			var spinWait = new SpinWait();
 			for (;;) {
-				switch (Interlocked.CompareExchange(ref useCount, Disposed, Disposable)) {
-					case Disposed:
-						return true;
-					case Disposable:
-						return false;
-				}
+				var original = Interlocked.CompareExchange(ref useCount, Disposed, Disposable);
+				if (original == Disposable)
+					return true;
+				if (original < Disposable)
+					return false;
+				spinWait.SpinOnce();
 			}
 		}
 
-		public static TResult WrapWithDisposalCheck<TResult>(ref Int32 useCount, Func<TResult> body) {
+		public static TResult DisposalGuard<TResult>(ref Int32 useCount, Func<TResult> body) {
 			try {
 				Enter(ref useCount);
 				return body();
@@ -38,7 +37,7 @@ namespace Disposal {
 			}
 		}
 
-		public static void WrapWithDisposalCheck(ref Int32 useCount, Action body) {
+		public static void DisposalGuard(ref Int32 useCount, Action body) {
 			try {
 				Enter(ref useCount);
 				body();
