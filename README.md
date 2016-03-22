@@ -98,7 +98,7 @@ struct SomeStructEx : IDisposable {
 
 ## TODO
 
-- Handle calling a base class `Dispose` method in a way that makes sense
+- Handle calling a base class `Dispose` method in a way that makes sense (for now, don't combine this tool with other dispose patterns)
 
 ## Contributing
 
