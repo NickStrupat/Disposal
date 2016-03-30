@@ -1,5 +1,5 @@
 ﻿{
-	"version": "1.0.0-*",
+	"version": "0.1.0-*",
 	"title": "Disposal",
 	"description": "A utility class which makes correctly implementing IDisposable simpler than ever",
 	"authors": [ "Nick Strupat" ],

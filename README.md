@@ -11,11 +11,11 @@ Correctly disposing managed and unmanaged resources requires careful considerati
 - protecting against race-conditions where the object could be disposing while another thread is calling a method on the object, and vice versa
 - ensuring different threads always see the latest state of the disposable object and its members
 
-Disposal takes care of all of these considerations with the following support:
+Disposal takes care of most of these considerations with the following support:
 
 - Automatically call `Dispose()` on all `IDisposable` members (this is done by emitting and caching IL; it is as fast as hand-written code)
 - Set disposed members to null in a thread-safe manner
-- Provide a simple wrapper for your methods to prevent disposing while in use, and to prevent method use while disposing/disposed
+- Provide a simple wrapper for your methods to prevent disposing while in use, and to prevent method calls while disposing/disposed
 - Even if you don't guard all of your methods, your `IDisposable` members will be set to null so calling code can't do anything terrible
 
 ## Installation
@@ -62,7 +62,7 @@ class Foo : IDisposable {
 	});
 
 	public void UseARefOrOutParam(ref Int32 number) {
-		// We need to explicitly enter and exit a guard here since you can't close over ref/out inside lambdas
+		// We need to explicitly enter and exit a guard here since you can't close over ref/out parameters inside lambdas
 		try {
 			disposableTracker.EnterGuard();
 
