@@ -54,7 +54,7 @@ class Foo : IDisposable {
 
 	private DisposableTracker<Foo> disposableTracker;
 	public void Dispose() => disposableTracker.Dispose(this); // `Dispose` and assigns null to each member, then call `GC.SuppressFinailize()`
-	~Foo() { disposableTracker.Dispose(this); }
+	~Foo() { Dispose(); }
 
 	public void DoSomething() => disposableTracker.DisposalGuard(() => {
 		// Foos won't be disposed while we're inside a guard, and will throw ObjectDisposedException if the object is disposed while trying to enter a guard
