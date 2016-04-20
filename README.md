@@ -11,7 +11,7 @@ Correctly disposing managed and unmanaged resources requires careful considerati
 - protecting against race-conditions where the object could be disposing while another thread is calling a method on the object, and vice versa
 - ensuring different threads always see the latest state of the disposable object and its members
 
-Disposal takes care of most of these considerations with the following support:
+Disposal takes care of most of these considerations for you (and makes the rest very simple) with the following support:
 
 - Automatically call `Dispose()` on all `IDisposable` members (this is done by emitting and caching IL; it is as fast as hand-written code)
 - Set disposed members to null in a thread-safe manner
@@ -54,7 +54,7 @@ class Foo : IDisposable {
 
 	private DisposableTracker<Foo> disposableTracker;
 	public void Dispose() => disposableTracker.Dispose(this); // `Dispose` and assigns null to each member, then call `GC.SuppressFinailize()`
-	~Foo() { disposableTracker.Dispose(this); }
+	~Foo() { Dispose(); }
 
 	public void DoSomething() => disposableTracker.DisposalGuard(() => {
 		// Foos won't be disposed while we're inside a guard, and will throw ObjectDisposedException if the object is disposed while trying to enter a guard
