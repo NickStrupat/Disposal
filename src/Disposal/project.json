@@ -3,17 +3,19 @@
 	"title": "Disposal",
 	"description": "A utility class which makes correctly implementing IDisposable simpler than ever",
 	"authors": [ "Nick Strupat" ],
-	"tags": [ "disposable", "dispose", "idisposable" ],
-	"projectUrl": "https://github.com/NickStrupat/Disposal",
-	"licenseUrl": "https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE",
+	"packOptions": {
+		"tags": [ "disposable", "dispose", "idisposable" ],
+		"projectUrl": "https://github.com/NickStrupat/Disposal",
+		"licenseUrl": "https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE"
+	},
 	"configurations": {
 		"Debug": {
-			"compilationOptions": {
+			"buildOptions": {
 				"define": [ "DEBUG", "TRACE" ]
 			}
 		},
 		"Release": {
-			"compilationOptions": {
+			"buildOptions": {
 				"define": [ "RELEASE", "TRACE" ],
 				"optimize": true
 			}
@@ -21,19 +23,26 @@
 	},
 	"frameworks": {
 		"net451": {
-			"compilationOptions": { "define": [ "DYNAMIC_ASSEMBLY_SAVEABLE" ] }
+			"buildOptions": { "define": [ "DYNAMIC_ASSEMBLY_SAVEABLE" ] }
 		},
-		"dotnet5.4": {
+		"netcoreapp1.0": {
 			"dependencies": {
-				"Microsoft.CSharp": "4.0.1-beta-23516",
-				"System.Collections": "4.0.11-beta-23516",
-				"System.Collections.Concurrent": "4.0.11-beta-23516",
-				"System.Linq": "4.0.1-beta-23516",
-				"System.Runtime": "4.0.21-beta-23516",
-				"System.Threading": "4.0.11-beta-23516",
-				"System.Reflection.Emit": "4.0.1-beta-23516",
-				"System.Reflection.Emit.Lightweight": "4.0.1-beta-23516"
-			}
+				"Microsoft.CSharp": "4.0.1-rc2-24027",
+				"System.Collections": "4.0.11-rc2-24027",
+				"System.Collections.Concurrent": "4.0.12-rc2-24027",
+				"System.Linq": "4.1.0-rc2-24027",
+				"System.Runtime": "4.1.0-rc2-24027",
+				"System.Threading": "4.0.11-rc2-24027",
+				"System.Reflection.Emit": "4.0.1-rc2-24027",
+				"System.Reflection.Emit.Lightweight": "4.0.1-rc2-24027",
+				"System.Reflection.Extensions": "4.0.1-rc3-23829",
+				"System.Reflection.TypeExtensions": "4.1.0-rc3-23829",
+				"System.Runtime.InteropServices": "4.1.0-rc3-23829"
+			},
+			"imports": [
+				"dnxcore50",
+				"portable-net45+win8"
+			]
 		}
 	}
 }
