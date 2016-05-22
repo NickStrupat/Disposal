@@ -2,6 +2,8 @@
 
 A tool I created to reduce the amount of code needed to implement `IDisposable` correctly and with thread-safety.
 
+## Why?
+
 Correctly disposing managed and unmanaged resources requires careful consideration of several factors including:
 
 - freeing unmanaged handles
@@ -32,7 +34,10 @@ Install the NuGet package which targets both .NET 4.5.1 and .NET Core or, of cou
 class Foo : IDisposable {
 	// IDisposable members here...
 
+	// DisposableTracker<T> instance member here...
 	private DisposableTracker<Foo> disposableTracker;
+	
+	// This is all you need for implementing `IDisposable.Dispose()`...
 	public void Dispose() => disposableTracker.Dispose(this);
 
 	public void Bar() => disposableTracker.Guard(() => {
@@ -64,8 +69,9 @@ class Foo : IDisposable {
 	public void UseARefOrOutParam(ref Int32 number) {
 		// We need to explicitly enter and exit a guard here since you can't close over ref/out parameters inside lambdas
 		try {
-			disposableTracker.EnterGuard();
+			disposableTracker.EnterGuard(); // Entering a guard must be inside the `try` block to correctly track use 
 
+			// Your normal UseARefOrOutParam() implementation here...
 			number += 42;
 		}
 		finally {
