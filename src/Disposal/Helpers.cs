@@ -23,6 +23,7 @@ namespace Disposal {
 					return true;
 				// Check if less-than 0 because a user could mess up the calls to EnterGuard and ExitGuard by not correctly putting them in
 				// a try-finally block (see DisposalGuard methods). This gives us room for (Int.MaxValue - 1) bad calls to Enter/ExitGuard
+				// before we lose control
 				if (original < Disposable)
 					return false;
 				spinWait.SpinOnce();

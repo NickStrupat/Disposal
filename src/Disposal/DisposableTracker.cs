@@ -7,10 +7,8 @@ namespace Disposal {
 		public void Dispose(T disposable) {
 			if (disposable == null)
 				throw new ArgumentNullException(nameof(disposable));
-			if (Helpers.MarkDisposed(ref useCount)) {
+			if (Helpers.MarkDisposed(ref useCount))
 				DisposalInternals.ClassDisposerCache<T>.Dispose(disposable);
-				GC.SuppressFinalize(disposable);
-			}
 		}
 		
 		public TResult Guard<TResult>(Func<TResult> body) {

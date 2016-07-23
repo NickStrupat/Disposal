@@ -36,7 +36,6 @@ namespace Disposal.Tests {
 
 		private DisposableTracker<Foo> disposableTracker;
 		public void Dispose() => disposableTracker.Dispose(this);
-		~Foo() { disposableTracker.Dispose(this); }
 
 		private static void Dispose(Foo @this) {
 			((IDisposable) Interlocked.Exchange(ref @this.woo, null))?.Dispose();
