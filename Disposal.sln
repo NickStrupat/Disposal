@@ -7,7 +7,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4A206FC6-A81
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5FE01CAC-2DCE-459E-92DF-25F90BF4FBD9}"
 	ProjectSection(SolutionItems) = preProject
-		global.json = global.json
 		README.md = README.md
 	EndProjectSection
 EndProject

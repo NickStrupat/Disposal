@@ -5,7 +5,7 @@
     <AssemblyTitle>Disposal</AssemblyTitle>
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>Nick Strupat</Authors>
-    <TargetFrameworks>net451;netcoreapp1.0</TargetFrameworks>
+    <TargetFrameworks>net451;netcoreapp2.1</TargetFrameworks>
     <AssemblyName>Disposal</AssemblyName>
     <PackageId>Disposal</PackageId>
     <PackageTags>disposable;dispose;idisposable</PackageTags>
@@ -22,7 +22,7 @@
     <DefineConstants>$(DefineConstants);DYNAMIC_ASSEMBLY_SAVEABLE</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.0' ">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.1' ">
     <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.0.1" />
     <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.0.1" />
   </ItemGroup>

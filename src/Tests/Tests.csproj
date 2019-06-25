@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Description>Disposal Tests</Description>
     <Authors>Nick Strupat</Authors>
-    <TargetFrameworks>net451;netcoreapp1.0</TargetFrameworks>
+    <TargetFrameworks>net451;netcoreapp2.1</TargetFrameworks>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/NickStrupat/Disposal</RepositoryUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE</PackageLicenseUrl>
