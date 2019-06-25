@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Disposal\Disposal.csproj" />
+    <ProjectReference Include="..\..\src\Disposal\Disposal.csproj" />
   </ItemGroup>
 
 </Project>
