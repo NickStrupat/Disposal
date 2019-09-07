@@ -17,6 +17,20 @@ namespace Disposal.Tests {
 			}
 			Assert.Equal(true, fooBarDisposed);
 		}
+
+#if !NO_SPAN
+		[Fact]
+		public void BasicTestUsingGuard()
+		{
+			var fooBarDisposed = false;
+			using (var foo = new Foo())
+			{
+				foo.DoIt4();
+				foo.Bar.Disposing = () => fooBarDisposed = true;
+			}
+			Assert.Equal(true, fooBarDisposed);
+		}
+#endif
 	}
 
 	public class Woo : IDisposable {
@@ -34,8 +48,8 @@ namespace Disposal.Tests {
 		public Bar Bar;
 		private SafeHandle okay = new SafeWaitHandle(IntPtr.Zero, ownsHandle:true);
 
-		private DisposableTracker<Foo> disposableTracker;
-		public void Dispose() => disposableTracker.Dispose(this);
+		private DisposalTracker<Foo> disposalTracker;
+		public void Dispose() => disposalTracker.Dispose(this);
 
 		private static void Dispose(Foo @this) {
 			((IDisposable) Interlocked.Exchange(ref @this.woo, null))?.Dispose();
@@ -45,24 +59,32 @@ namespace Disposal.Tests {
 			//@this.Bar.Dispose();
 		}
 
-		public Bar DoIt() => disposableTracker.Guard(() => {
+		public Bar DoIt() => disposalTracker.Guard(() => {
 			return this.Bar;
 		});
 
-		public void DoIt2() => disposableTracker.Guard(() => {
+		public void DoIt2() => disposalTracker.Guard(() => {
 			DoIt();
 			DoIt3(ref Bar);
 		});
 
 		private void DoIt3(ref Bar bar) {
 			try {
-				disposableTracker.EnterGuard();
+				disposalTracker.EnterGuard();
 
 				Console.WriteLine("");
 			}
 			finally {
-				disposableTracker.ExitGuard();
+				disposalTracker.ExitGuard();
 			}
 		}
+
+#if !NO_SPAN
+		public void DoIt4()
+		{
+			using (disposalTracker.Guard())
+			Console.WriteLine("");
+		}
+#endif
 	}
 }

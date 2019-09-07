@@ -11,6 +11,7 @@
     <PackageTags>disposable;dispose;idisposable</PackageTags>
     <PackageProjectUrl>https://github.com/NickStrupat/Disposal</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE</PackageLicenseUrl>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
@@ -19,12 +20,16 @@
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
-    <DefineConstants>$(DefineConstants);DYNAMIC_ASSEMBLY_SAVEABLE</DefineConstants>
+    <DefineConstants>$(DefineConstants);DYNAMIC_ASSEMBLY_SAVEABLE;NO_SPAN</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.1' ">
     <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.0.1" />
     <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.5.3" />
   </ItemGroup>
 
 </Project>

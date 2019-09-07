@@ -7,6 +7,7 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/NickStrupat/Disposal</RepositoryUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/NickStrupat/Disposal/master/LICENSE</PackageLicenseUrl>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +15,10 @@
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
   </ItemGroup>
+
+	<PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
+		<DefineConstants>$(DefineConstants);NO_SPAN</DefineConstants>
+	</PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Disposal\Disposal.csproj" />
