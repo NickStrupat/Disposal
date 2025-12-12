@@ -1,43 +1,121 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
+using static System.Reflection.BindingFlags;
 
-namespace Disposal {
-	public struct DisposalTracker<T> where T : class, IDisposable {
-		private Int32 useCount;
+namespace Disposal;
 
-		public void Dispose(T disposable) {
-			if (disposable == null)
-				throw new ArgumentNullException(nameof(disposable));
-			if (Helpers.MarkDisposed(ref useCount))
-				DisposalInternals.ClassDisposerCache<T>.Dispose(disposable);
-		}
+public sealed class DisposalTracker(Object target) : IAsyncDisposable
+{
+	private readonly Object target = target ?? throw new ArgumentNullException(nameof(target));
 
-#if !NO_SPAN
-		public Guard<T> Guard() => new Guard<T>(MemoryMarshal.CreateSpan(ref this, 1));
-#endif
+	private volatile Status status = Status.Alive;
+	private InterlockedUInt32 useCount;
+	private readonly TaskCompletionSource waitingToDisposeTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-		public TResult Guard<TResult>(Func<TResult> body) {
-			if (body == null)
-				throw new ArgumentNullException(nameof(body));
-			return Helpers.DisposalGuard(ref useCount, body);
-		}
-
-		public void Guard(Action body) {
-			if (body == null)
-				throw new ArgumentNullException(nameof(body));
-			Helpers.DisposalGuard(ref useCount, body);
-		}
-
-		public void EnterGuard() => Helpers.Enter(ref useCount);
-		public void ExitGuard() => Helpers.Exit(ref useCount);
-	}
-
-#if !NO_SPAN
-	public ref struct Guard<T> where T : class, IDisposable
+	public async ValueTask DisposeAsync()
 	{
-		private readonly Span<DisposalTracker<T>> span;
-		internal Guard(Span<DisposalTracker<T>> disposalTracker) => (span = disposalTracker)[0].EnterGuard();
-		public void Dispose() => span[0].ExitGuard();
+		status = Status.Disposing;
+		if (useCount.Read() != 0)
+			await waitingToDisposeTcs.Task;
+		try
+		{
+			await DisposeTargetObjectFields();
+		}
+		finally
+		{
+			status = Status.Disposed;
+		}
 	}
-#endif
+
+	internal GuardReleaser GetGuard()
+	{
+		if (status != Status.Alive)
+			throw new ObjectDisposedException(target.GetType().FullName);
+		useCount.Increment();
+		return new GuardReleaser(this);
+	}
+
+	internal readonly struct GuardReleaser(DisposalTracker disposalTracker) : IDisposable
+	{
+		public void Dispose() => Release();
+
+		void Release()
+		{
+			if (disposalTracker.useCount.Decrement() == 0 && disposalTracker.status != Status.Alive)
+				disposalTracker.waitingToDisposeTcs.SetResult();
+		}
+	}
+
+	private async ValueTask DisposeTargetObjectFields()
+	{
+		var fieldGetters = ReflectionCache.GetFieldGetters(target);
+		foreach (var getField in fieldGetters)
+		{
+			switch (getField(target))
+			{
+				case DisposalTracker:
+					break;
+				case IAsyncDisposable asyncDisposableField:
+					await asyncDisposableField.DisposeAsync();
+					break;
+				case IDisposable disposableField:
+					disposableField.Dispose();
+					break;
+			}
+		}
+	}
+
+	private static class ReflectionCache
+	{
+		private static readonly ConcurrentDictionary<Type, List<Func<Object, Object?>>> reflectionCache = new();
+
+		public static List<Func<Object, Object?>> GetFieldGetters(Object target)
+		{
+			return reflectionCache.GetOrAdd(target.GetType(), ValueFactory);
+
+			static List<Func<Object, Object?>> ValueFactory(Type t) =>
+				t.GetFields(Instance | Public | NonPublic)
+					.Where(fi => fi.GetCustomAttribute<DisposalIgnoreAttribute>() == null && fi.FieldType != typeof(DisposalTracker))
+					.Select(fi => fi.CreateFieldGetter())
+					.ToList();
+		}
+	}
+}
+
+public static class DisposalTrackerExtensions
+{
+	public static void Guard(this DisposalTracker @this, Action body)
+	{
+		using var guard = @this.GetGuard();
+		body();
+	}
+
+	public static T Guard<T>(this DisposalTracker @this, Func<T> body)
+	{
+		using var guard = @this.GetGuard();
+		return body();
+	}
+
+	public static async Task GuardAsync(this DisposalTracker @this, Func<Task> body)
+	{
+		using var guard = @this.GetGuard();
+		await body();
+	}
+
+	public static async Task<T> GuardAsync<T>(this DisposalTracker @this, Func<Task<T>> body)
+	{
+		using var guard = @this.GetGuard();
+		return await body();
+	}
+}
+
+internal enum Status : Byte { Alive, Disposing, Disposed }
+
+internal struct InterlockedUInt32
+{
+	private UInt32 value;
+	public UInt32 Increment() => Interlocked.Increment(ref value);
+	public UInt32 Decrement() => Interlocked.Decrement(ref value);
+	public UInt32 Read() => Interlocked.CompareExchange(ref value, 0, 0);
+	public override String ToString() => Read().ToString();
 }
