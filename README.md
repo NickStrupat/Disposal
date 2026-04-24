@@ -1,110 +1,118 @@
 # Disposal
 
-A tool I created to reduce the amount of code needed to implement `IDisposable` correctly and with thread-safety.
+A utility library that reduces the boilerplate needed to implement `IAsyncDisposable` correctly and with thread-safety.
 
 ## Why?
 
-Correctly disposing managed and unmanaged resources requires careful consideration of several factors including:
+Correctly disposing resources requires careful consideration of several factors including:
 
-- freeing unmanaged handles
-- calling `Dispose` on all `IDisposable` members
-- ensuring handles and members are not disposed more than once
-- suppressing the GC attempt to finalize the object after it's been explicitly disposed
-- protecting against race-conditions where the object could be disposing while another thread is calling a method on the object, and vice versa
-- ensuring different threads always see the latest state of the disposable object and its members
+- Calling `Dispose()` or `DisposeAsync()` on all disposable members
+- Ensuring members are not disposed more than once
+- Protecting against race-conditions where the object could be disposing while another thread is calling a method on the object, and vice versa
 
-Disposal takes care of most of these considerations for you (and makes the rest very simple) with the following support:
+Disposal takes care of these considerations for you:
 
-- Automatically call `Dispose()` on all `IDisposable` members (this is done by emitting and caching IL; it is as fast as hand-written code)
-- Set disposed members to null in a thread-safe manner
-- Provide a simple wrapper for your methods to prevent disposing while in use, and to prevent method calls while disposing/disposed
-- Even if you don't guard all of your methods, your `IDisposable` members will be set to null so calling code can't do anything terrible
+- Automatically calls `DisposeAsync()` on all `IAsyncDisposable` fields and `Dispose()` on all `IDisposable` fields
+- Provides a guard mechanism that prevents method calls while disposing/disposed, and prevents disposal while guarded methods are in-flight
+- `DisposeAsync()` is idempotent — calling it multiple times is safe
+- Uses lock-free atomics for the guard counter, so there's no contention in the common case
+
+### Thread-safety guarantees
+
+The guard and disposal operations are fully atomic with respect to each other:
+
+- **Guard entry is atomic** — the use-count is incremented before the status check, so `DisposeAsync()` always sees the true count of active guards. There is no window where a guard could be running while fields are being disposed.
+- **Disposal waits** — `DisposeAsync()` will not begin disposing fields until all active guards have exited.
+- **Late guard attempts fail** — if `DisposeAsync()` has been called, new guard attempts throw `ObjectDisposedException`.
 
 ## Installation
 
-Install the NuGet package which targets both .NET 4.5.1 and .NET Core or, of course, clone/fork this repository and build the assembly yourself!
+Install the [NuGet package](https://www.nuget.org/packages/Disposal/) or clone/fork this repository and build it yourself.
 
 ## Usage
 
-`DisposableTracker<T>` is the core class you'll be using. It keeps track of the disposal state and provides a few methods which provide safe and correct behaviour.
+`DisposalTracker` is the core class. Add it as a field, delegate `DisposeAsync()` to it, and wrap your methods in `Guard` calls.
 
-**Basic**
+### Basic
 
 ```csharp
-class Foo : IDisposable {
-	// IDisposable members here...
+class Foo : IAsyncDisposable
+{
+    private readonly SomeResource resource = new();
+    private readonly DisposalTracker tracker;
 
-	// DisposableTracker<T> instance member here...
-	private DisposableTracker<Foo> disposableTracker;
-	
-	// This is all you need for implementing `IDisposable.Dispose()`...
-	public void Dispose() => disposableTracker.Dispose(this);
+    public Foo() => tracker = new(this);
 
-	public void Bar() => disposableTracker.Guard(() => {
-		// Your normal Bar() implementation here...
-	});
+    public ValueTask DisposeAsync() => tracker.DisposeAsync();
+
+    public void Bar() => tracker.Guard(() =>
+    {
+        // Your normal Bar() implementation here.
+        // Throws ObjectDisposedException if Foo is disposing/disposed.
+        // Disposal will wait for this to complete before proceeding.
+    });
 }
 ```
 
-**Full**
+### Async guards
 
 ```csharp
-class Foo : IDisposable {
-	// These each implement `IDisposable`
-	private SomeClass sc = new SomeClass();
-	private SomeStruct ss = new SomeStruct();
-	private SomeClassEx scx = new SomeClassEx();
-	private SomeStructEx ssx = new SomeStructEx();
-	private SafeHandle someUnmanagedResource; // assign some derived class instance which wraps your unmanaged resource
+class Foo : IAsyncDisposable
+{
+    private readonly HttpClient client = new();
+    private readonly DisposalTracker tracker;
 
-	private DisposableTracker<Foo> disposableTracker;
-	public void Dispose() => disposableTracker.Dispose(this); // `Dispose` and assigns null to each member, then call `GC.SuppressFinailize()`
-	~Foo() { Dispose(); }
+    public Foo() => tracker = new(this);
 
-	public void DoSomething() => disposableTracker.DisposalGuard(() => {
-		// Foos won't be disposed while we're inside a guard, and will throw ObjectDisposedException if the object is disposed while trying to enter a guard
-		bar.DoAThing(baz);
-	});
+    public ValueTask DisposeAsync() => tracker.DisposeAsync();
 
-	public void UseARefOrOutParam(ref Int32 number) {
-		// We need to explicitly enter and exit a guard here since you can't close over ref/out parameters inside lambdas
-		try {
-			disposableTracker.EnterGuard(); // Entering a guard must be inside the `try` block to correctly track use 
-
-			// Your normal UseARefOrOutParam() implementation here...
-			number += 42;
-		}
-		finally {
-			disposableTracker.ExitGuard();
-		}
-	}
-}
-
-class SomeClass : IDisposable {
-	public void Dispose() => Console.WriteLine("Dispose this Foo!");
-}
-struct SomeStruct : IDisposable {
-	public void Dispose() => Console.WriteLine("Dispose this Bar!");
-}
-// Explicit implementation of `Dispose`
-class SomeClassEx : IDisposable {
-	void IDisposable.Dispose() => Console.WriteLine("Dispose this FooEx through IDisposable!");
-}
-struct SomeStructEx : IDisposable {
-	void IDisposable.Dispose() => Console.WriteLine("Dispose this BarEx through IDisposable!");
+    public async Task<string> FetchAsync(string url) => await tracker.GuardAsync(async () =>
+    {
+        return await client.GetStringAsync(url);
+    });
 }
 ```
 
-### Remarks
+### Ignoring fields
 
-- Classes are handled as if calling `Interlocked.Exchange(ref @this.someClass, null)?.Dispose();`
-- Unmanaged handles are not freed; this is basically impossible to do automatically. It is strongly suggested that you always wrap your unmanaged handles in a class derived from [SafeHandle](https://msdn.microsoft.com/en-us/library/system.runtime.interopservices.safehandle(v=vs.110).aspx).
-- Structs which implement `IDisposable` need to use `DisposableStructTracker<T>`
-- Structs can implement `IDisposable.Dispose()` explicitly (through interface only) and Disposal will call it without boxing (this is good)
+Use `[DisposalIgnore]` on fields that should not be disposed automatically (e.g. injected dependencies you don't own).
 
-## TODO
+```csharp
+class Foo : IAsyncDisposable
+{
+    [DisposalIgnore]
+    private readonly ILogger logger; // not owned by this class
 
-- Handle calling a base class `Dispose` method in a way that makes sense (for now, don't combine this tool with other dispose patterns)
+    private readonly Stream ownedStream = new MemoryStream();
+    private readonly DisposalTracker tracker;
+
+    public Foo(ILogger logger)
+    {
+        this.logger = logger;
+        tracker = new(this);
+    }
+
+    public ValueTask DisposeAsync() => tracker.DisposeAsync();
+}
+```
+
+### Guard methods
+
+| Method | Signature |
+|---|---|
+| `Guard` | `void Guard(Action body)` |
+| `Guard<T>` | `T Guard<T>(Func<T> body)` |
+| `GuardAsync` | `Task GuardAsync(Func<Task> body)` |
+| `GuardAsync<T>` | `Task<T> GuardAsync<T>(Func<Task<T>> body)` |
+
+All guard methods throw `ObjectDisposedException` if the object is disposing or disposed. `DisposeAsync()` will wait for all active guards to complete before disposing fields.
+
+## Remarks
+
+- Only fields are inspected for automatic disposal. Auto-implemented property backing fields are included.
+- `DisposalTracker` fields and fields marked with `[DisposalIgnore]` are skipped.
+- Field getters are compiled via expression trees and cached per type, so reflection cost is paid only once.
+- Unmanaged handles are not freed automatically. Wrap them in a class derived from [SafeHandle](https://learn.microsoft.com/dotnet/api/system.runtime.interopservices.safehandle).
 
 ## Contributing
 
@@ -114,12 +122,8 @@ struct SomeStructEx : IDisposable {
 4. Create your feature branch: `git checkout -b my-new-feature`
 5. Commit your changes: `git commit -am 'Add some feature'`
 6. Push to the branch: `git push origin my-new-feature`
-7. Submit a pull request :D
-
-## History
-
-[Commit history](https://github.com/NickStrupat/Disposal/commits/master)
+7. Submit a pull request
 
 ## License
 
-MIT License
+[MIT License](LICENSE)
