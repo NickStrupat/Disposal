@@ -8,13 +8,15 @@ public sealed class DisposalTracker(Object target) : IAsyncDisposable
 {
 	private readonly Object target = target ?? throw new ArgumentNullException(nameof(target));
 
-	private volatile Status status = Status.Alive;
+	private Int32 status = (Int32)Status.Alive;
 	private InterlockedUInt32 useCount;
 	private readonly TaskCompletionSource waitingToDisposeTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
 	public async ValueTask DisposeAsync()
 	{
-		status = Status.Disposing;
+		if (Interlocked.CompareExchange(ref status, (Int32)Status.Disposing, (Int32)Status.Alive) != (Int32)Status.Alive)
+			return;
+
 		if (useCount.Read() != 0)
 			await waitingToDisposeTcs.Task;
 		try
@@ -23,27 +25,30 @@ public sealed class DisposalTracker(Object target) : IAsyncDisposable
 		}
 		finally
 		{
-			status = Status.Disposed;
+			Volatile.Write(ref status, (Int32)Status.Disposed);
 		}
 	}
 
 	internal GuardReleaser GetGuard()
 	{
-		if (status != Status.Alive)
-			throw new ObjectDisposedException(target.GetType().FullName);
 		useCount.Increment();
+		if (Volatile.Read(ref status) != (Int32)Status.Alive)
+		{
+			ReleaseGuard();
+			throw new ObjectDisposedException(target.GetType().FullName);
+		}
 		return new GuardReleaser(this);
+	}
+
+	private void ReleaseGuard()
+	{
+		if (useCount.Decrement() == 0 && Volatile.Read(ref status) != (Int32)Status.Alive)
+			waitingToDisposeTcs.TrySetResult();
 	}
 
 	internal readonly struct GuardReleaser(DisposalTracker disposalTracker) : IDisposable
 	{
-		public void Dispose() => Release();
-
-		void Release()
-		{
-			if (disposalTracker.useCount.Decrement() == 0 && disposalTracker.status != Status.Alive)
-				disposalTracker.waitingToDisposeTcs.SetResult();
-		}
+		public void Dispose() => disposalTracker.ReleaseGuard();
 	}
 
 	private async ValueTask DisposeTargetObjectFields()
