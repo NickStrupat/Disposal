@@ -12,7 +12,7 @@ Correctly disposing resources requires careful consideration of several factors 
 
 Disposal takes care of these considerations for you:
 
-- Automatically calls `DisposeAsync()` on all `IAsyncDisposable` fields and `Dispose()` on all `IDisposable` fields
+- Automatically calls `DisposeAsync()` on `IAsyncDisposable` fields and `Dispose()` on `IDisposable` fields marked with `[Owned]`
 - Provides a guard mechanism that prevents method calls while disposing/disposed, and prevents disposal while guarded methods are in-flight
 - `DisposeAsync()` is idempotent — calling it multiple times is safe
 - Uses lock-free atomics for the guard counter, so there's no contention in the common case
@@ -35,10 +35,12 @@ Install the [NuGet package](https://www.nuget.org/packages/Disposal/) or clone/f
 
 ### Basic
 
+Mark fields you own with `[Owned]` — they'll be disposed automatically. Unmarked fields (e.g. injected dependencies) are left alone.
+
 ```csharp
 class Foo : IAsyncDisposable
 {
-    private readonly SomeResource resource = new();
+    [Owned] private readonly SomeResource resource = new();
     private readonly DisposalTracker tracker;
 
     public Foo() => tracker = new(this);
@@ -59,7 +61,7 @@ class Foo : IAsyncDisposable
 ```csharp
 class Foo : IAsyncDisposable
 {
-    private readonly HttpClient client = new();
+    [Owned] private readonly HttpClient client = new();
     private readonly DisposalTracker tracker;
 
     public Foo() => tracker = new(this);
@@ -73,17 +75,16 @@ class Foo : IAsyncDisposable
 }
 ```
 
-### Ignoring fields
+### Owned vs. injected fields
 
-Use `[DisposalIgnore]` on fields that should not be disposed automatically (e.g. injected dependencies you don't own).
+Only fields marked `[Owned]` are disposed. Injected dependencies require no annotation — they're ignored by default.
 
 ```csharp
 class Foo : IAsyncDisposable
 {
-    [DisposalIgnore]
-    private readonly ILogger logger; // not owned by this class
+    private readonly ILogger logger; // injected, not disposed
 
-    private readonly Stream ownedStream = new MemoryStream();
+    [Owned] private readonly Stream ownedStream = new MemoryStream();
     private readonly DisposalTracker tracker;
 
     public Foo(ILogger logger)
@@ -94,6 +95,12 @@ class Foo : IAsyncDisposable
 
     public ValueTask DisposeAsync() => tracker.DisposeAsync();
 }
+```
+
+For auto-implemented properties, use `[field: Owned]` to target the backing field:
+
+```csharp
+[field: Owned] public Stream Data { get; set; } = new MemoryStream();
 ```
 
 ### Guard methods
@@ -109,8 +116,9 @@ All guard methods throw `ObjectDisposedException` if the object is disposing or 
 
 ## Remarks
 
-- Only fields are inspected for automatic disposal. Auto-implemented property backing fields are included.
-- `DisposalTracker` fields and fields marked with `[DisposalIgnore]` are skipped.
+- Only fields marked with `[Owned]` are disposed. Unmarked disposable fields are left alone.
+- For auto-implemented properties, use `[field: Owned]` to target the compiler-generated backing field.
+- `DisposalTracker` fields are always skipped, even if marked `[Owned]`.
 - Field getters are compiled via expression trees and cached per type, so reflection cost is paid only once.
 - Unmanaged handles are not freed automatically. Wrap them in a class derived from [SafeHandle](https://learn.microsoft.com/dotnet/api/system.runtime.interopservices.safehandle).
 

@@ -11,9 +11,9 @@ class Foo : IAsyncDisposable
 	private readonly DisposalTracker tracker;
 	public Foo() => tracker = new(this);
 
-	private readonly Disposable disposable = new();
+	[Owned] private readonly Disposable disposable = new();
 
-	// [field: DisposalIgnore]
+	[field: Owned]
 	private Disposable DisposableProp { get; set; } = new();
 
 	public async ValueTask DisposeAsync() => await tracker.DisposeAsync();

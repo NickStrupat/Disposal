@@ -26,8 +26,8 @@ public class DisposalTrackerTests
 
 	private class TestClass : IAsyncDisposable
 	{
-		public TestDisposable Disposable = new();
-		public TestAsyncDisposable AsyncDisposable = new();
+		[Owned] public TestDisposable Disposable = new();
+		[Owned] public TestAsyncDisposable AsyncDisposable = new();
 		private readonly DisposalTracker tracker;
 		public TestClass() => tracker = new(this);
 		public ValueTask DisposeAsync() => tracker.DisposeAsync();
@@ -179,30 +179,29 @@ public class DisposalTrackerTests
 		Assert.True(obj.AsyncDisposable.Disposed);
 	}
 
-	private class ClassWithIgnoredField : IAsyncDisposable
+	private class ClassWithOwnedAndUnmarkedFields : IAsyncDisposable
 	{
-		[DisposalIgnore]
-		public TestDisposable Ignored = new();
-		public TestDisposable NotIgnored = new();
+		public TestDisposable Unmarked = new();
+		[Owned] public TestDisposable Marked = new();
 		private readonly DisposalTracker tracker;
-		public ClassWithIgnoredField() => tracker = new(this);
+		public ClassWithOwnedAndUnmarkedFields() => tracker = new(this);
 		public ValueTask DisposeAsync() => tracker.DisposeAsync();
 	}
 
 	[Fact]
-	public async Task DisposalIgnore_PreventsFieldDisposal()
+	public async Task Owned_OnlyDisposesMarkedFields()
 	{
-		var obj = new ClassWithIgnoredField();
+		var obj = new ClassWithOwnedAndUnmarkedFields();
 		await obj.DisposeAsync();
-		Assert.False(obj.Ignored.Disposed);
-		Assert.True(obj.NotIgnored.Disposed);
+		Assert.False(obj.Unmarked.Disposed);
+		Assert.True(obj.Marked.Disposed);
 	}
 
 	private class ClassWithNonDisposableFields : IAsyncDisposable
 	{
 		public string Text = "hello";
 		public int Number = 42;
-		public TestDisposable Disposable = new();
+		[Owned] public TestDisposable Disposable = new();
 		private readonly DisposalTracker tracker;
 		public ClassWithNonDisposableFields() => tracker = new(this);
 		public ValueTask DisposeAsync() => tracker.DisposeAsync();
@@ -220,7 +219,7 @@ public class DisposalTrackerTests
 
 	private class ClassWithAutoProperty : IAsyncDisposable
 	{
-		public TestDisposable AutoProp { get; set; } = new();
+		[field: Owned] public TestDisposable AutoProp { get; set; } = new();
 		private readonly DisposalTracker tracker;
 		public ClassWithAutoProperty() => tracker = new(this);
 		public ValueTask DisposeAsync() => tracker.DisposeAsync();
@@ -237,9 +236,9 @@ public class DisposalTrackerTests
 
 	private class ClassWithMixedDisposables : IAsyncDisposable
 	{
-		public TestDisposable SyncField = new();
-		public TestAsyncDisposable AsyncField = new();
-		public TestDisposable AnotherSyncField = new();
+		[Owned] public TestDisposable SyncField = new();
+		[Owned] public TestAsyncDisposable AsyncField = new();
+		[Owned] public TestDisposable AnotherSyncField = new();
 		private readonly DisposalTracker tracker;
 		public ClassWithMixedDisposables() => tracker = new(this);
 		public ValueTask DisposeAsync() => tracker.DisposeAsync();
@@ -257,7 +256,7 @@ public class DisposalTrackerTests
 
 	private class ClassWithPrivateDisposable : IAsyncDisposable
 	{
-		private TestDisposable secret = new();
+		[Owned] private TestDisposable secret = new();
 		private readonly DisposalTracker tracker;
 		public ClassWithPrivateDisposable() => tracker = new(this);
 		public ValueTask DisposeAsync() => tracker.DisposeAsync();

@@ -80,7 +80,7 @@ public sealed class DisposalTracker(Object target) : IAsyncDisposable
 
 			static List<Func<Object, Object?>> ValueFactory(Type t) =>
 				t.GetFields(Instance | Public | NonPublic)
-					.Where(fi => fi.GetCustomAttribute<DisposalIgnoreAttribute>() == null && fi.FieldType != typeof(DisposalTracker))
+					.Where(fi => fi.GetCustomAttribute<OwnedAttribute>() != null && fi.FieldType != typeof(DisposalTracker))
 					.Select(fi => fi.CreateFieldGetter())
 					.ToList();
 		}
